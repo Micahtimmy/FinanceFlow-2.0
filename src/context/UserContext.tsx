@@ -297,6 +297,13 @@ function userReducer(state: UserState, action: UserAction): UserState {
 
 interface UserContextType {
   state: UserState
+  // User data (alias for components using userData pattern)
+  userData: {
+    transactions: Transaction[]
+    savingsGoals: SavingsGoal[]
+    bills: Bill[]
+    categories: Category[]
+  }
   // User actions
   setUser: (user: User) => void
   // Transaction actions
@@ -312,6 +319,9 @@ interface UserContextType {
   updateBill: (bill: Bill) => void
   deleteBill: (id: string) => void
   markBillPaid: (id: string) => void
+  // Data management
+  clearAllData: () => void
+  exportData: () => void
   // Computed values
   getFinancialData: () => FinancialData
   getPulseScore: () => PulseScore
@@ -488,10 +498,48 @@ export function UserProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
   }
 
+  // Clear all user data
+  const clearAllData = () => {
+    dispatch({ type: 'SET_TRANSACTIONS', payload: [] })
+    dispatch({ type: 'SET_SAVINGS_GOALS', payload: [] })
+    dispatch({ type: 'SET_BILLS', payload: [] })
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
+  // Export all user data as JSON
+  const exportData = () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      transactions: state.transactions,
+      savingsGoals: state.savingsGoals,
+      bills: state.bills,
+      categories: state.categories,
+    }
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `financeflow-export-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // Alias for components using userData pattern
+  const userData = {
+    transactions: state.transactions,
+    savingsGoals: state.savingsGoals,
+    bills: state.bills,
+    categories: state.categories,
+  }
+
   return (
     <UserContext.Provider
       value={{
         state,
+        userData,
         setUser,
         addTransaction,
         updateTransaction,
@@ -503,6 +551,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         updateBill,
         deleteBill,
         markBillPaid,
+        clearAllData,
+        exportData,
         getFinancialData,
         getPulseScore,
         getTotalBudget,
@@ -526,3 +576,6 @@ export function useUser() {
   }
   return context
 }
+
+// Alias for components using userData pattern
+export const useUserData = useUser

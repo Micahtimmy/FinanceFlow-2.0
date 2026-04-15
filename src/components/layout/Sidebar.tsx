@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -28,6 +28,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/context/ThemeContext'
+import { useAuth } from '@/context/AuthContext'
+import { NotificationCenter } from '@/components/notifications'
+import { toast } from 'sonner'
 
 interface NavItem {
   label: string
@@ -91,6 +94,8 @@ function NavItemComponent({ item }: { item: NavItem }) {
 
 export function Sidebar() {
   const { theme, setTheme, resolvedTheme } = useTheme()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
 
   const toggleTheme = () => {
     if (theme === 'system') {
@@ -100,14 +105,27 @@ export function Sidebar() {
     }
   }
 
+  const handleSignOut = async () => {
+    await signOut()
+    toast.success('Signed out successfully')
+    navigate('/auth/login')
+  }
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'
+  const email = user?.email || 'user@example.com'
+  const initials = displayName.charAt(0).toUpperCase()
+
   return (
     <aside className="hidden md:flex h-screen w-[var(--sidebar-width)] flex-col border-r border-[var(--color-border)] bg-[var(--color-card)]">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-2)]">
-          <span className="text-sm font-bold text-white">F</span>
+      {/* Logo and Notifications */}
+      <div className="flex h-16 items-center justify-between px-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-2)]">
+            <span className="text-sm font-bold text-white">F</span>
+          </div>
+          <span className="text-lg font-semibold gradient-text">FinanceFlow</span>
         </div>
-        <span className="text-lg font-semibold gradient-text">FinanceFlow</span>
+        <NotificationCenter />
       </div>
 
       {/* Main Navigation */}
@@ -150,15 +168,15 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-background-secondary)]">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="" alt="User" />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarImage src={user?.user_metadata?.avatar_url || ''} alt={displayName} />
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
                 <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                  User
+                  {displayName}
                 </p>
                 <p className="truncate text-xs text-[var(--color-text-muted)]">
-                  user@example.com
+                  {email}
                 </p>
               </div>
             </button>
@@ -171,7 +189,7 @@ export function Sidebar() {
               </NavLink>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-[var(--color-danger)]">
+            <DropdownMenuItem onClick={handleSignOut} className="text-[var(--color-danger)]">
               <LogOut className="h-4 w-4" />
               Sign Out
             </DropdownMenuItem>

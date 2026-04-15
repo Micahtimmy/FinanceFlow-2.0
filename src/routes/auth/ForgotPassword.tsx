@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { toast } from 'sonner'
 
 export function ForgotPassword() {
+  const { resetPassword, isDemoMode } = useAuth()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -16,11 +19,17 @@ export function ForgotPassword() {
     setError('')
     setIsLoading(true)
 
-    // Simulate sending reset email
-    setTimeout(() => {
+    const { error } = await resetPassword(email)
+
+    if (error) {
+      setError(error.message)
       setIsLoading(false)
-      setIsSuccess(true)
-    }, 1000)
+      return
+    }
+
+    toast.success('Password reset email sent!')
+    setIsLoading(false)
+    setIsSuccess(true)
   }
 
   return (
@@ -40,6 +49,16 @@ export function ForgotPassword() {
             <span className="text-xl font-semibold gradient-text">FinanceFlow</span>
           </Link>
         </div>
+
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-4 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-3">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-warning)]">
+              <AlertCircle className="h-4 w-4" />
+              <span>Demo Mode - Password reset is simulated</span>
+            </div>
+          </div>
+        )}
 
         <Card>
           <CardContent className="p-6">
@@ -92,7 +111,10 @@ export function ForgotPassword() {
 
                     {/* Error */}
                     {error && (
-                      <p className="text-sm text-[var(--color-danger)]">{error}</p>
+                      <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
+                        <AlertCircle className="h-4 w-4" />
+                        {error}
+                      </div>
                     )}
 
                     {/* Submit */}

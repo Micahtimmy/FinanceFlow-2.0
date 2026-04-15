@@ -13,6 +13,7 @@ import {
 import { staggerContainer, staggerItem } from '@/lib/animations'
 import { generatePulseHistory, getScoreColor } from '@/lib/financial-pulse'
 import { useUser } from '@/context/UserContext'
+import { RemindersWidget } from '@/components/dashboard'
 import { Plus, CreditCard, ArrowRightLeft, BarChart3, Sparkles } from 'lucide-react'
 
 function AnimatedNumber({ value, duration = 1 }: { value: number; duration?: number }) {
@@ -550,6 +551,11 @@ export function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Reminders Widget */}
+        <motion.div variants={staggerItem}>
+          <RemindersWidget />
         </motion.div>
       </motion.div>
     </div>

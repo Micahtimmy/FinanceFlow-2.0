@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,7 +10,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { useTheme } from '@/context/ThemeContext'
+import { useTheme, type FontFamily, type AccentColor } from '@/context/ThemeContext'
+import { useAuth } from '@/context/AuthContext'
+import { useUser } from '@/context/UserContext'
+import { toast } from 'sonner'
 import {
   Sun,
   Moon,
@@ -24,6 +28,7 @@ import {
   Download,
   Trash2,
   Check,
+  Type,
 } from 'lucide-react'
 import type { Theme } from '@/types'
 
@@ -38,7 +43,7 @@ const sections: { id: SettingsSection; label: string; icon: React.ComponentType<
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ]
 
-const accentColors = [
+const accentColors: { id: AccentColor; color: string; label: string }[] = [
   { id: 'blue', color: '#6366f1', label: 'Blue' },
   { id: 'purple', color: '#a855f7', label: 'Purple' },
   { id: 'green', color: '#10b981', label: 'Green' },
@@ -47,17 +52,26 @@ const accentColors = [
   { id: 'slate', color: '#64748b', label: 'Slate' },
 ]
 
+const fontOptions: { id: FontFamily; label: string; preview: string }[] = [
+  { id: 'system', label: 'System Default', preview: 'Aa' },
+  { id: 'inter', label: 'Inter', preview: 'Aa' },
+  { id: 'roboto', label: 'Roboto', preview: 'Aa' },
+  { id: 'nunito', label: 'Nunito', preview: 'Aa' },
+  { id: 'source-sans', label: 'Source Sans', preview: 'Aa' },
+]
+
 export function Settings() {
-  const { theme, setTheme } = useTheme()
+  const navigate = useNavigate()
+  const { theme, setTheme, font, setFont, accentColor, setAccentColor, density, setDensity } = useTheme()
+  const { user, signOut } = useAuth()
+  const { clearAllData, exportData } = useUser()
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [accentColor, setAccentColor] = useState('blue')
-  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
 
-  // Profile state
-  const [displayName, setDisplayName] = useState('User')
-  const [email, setEmail] = useState('user@example.com')
+  // Profile state - initialized from auth context
+  const [displayName, setDisplayName] = useState(user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User')
+  const [email, setEmail] = useState(user?.email || 'user@example.com')
 
   // Financial Identity state
   const [monthlyIncome, setMonthlyIncome] = useState('5000')
@@ -413,7 +427,14 @@ export function Settings() {
                       Export all your financial data as JSON
                     </p>
                   </div>
-                  <Button variant="outline" className="gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      exportData()
+                      toast.success('Data exported successfully!')
+                    }}
+                  >
                     <Download className="h-4 w-4" />
                     Export
                   </Button>
@@ -431,7 +452,7 @@ export function Settings() {
                 <CardTitle className="text-base">Theme</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {themeOptions.map((option) => (
                     <button
                       key={option.value}
@@ -452,6 +473,50 @@ export function Settings() {
 
             <Card>
               <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Type className="h-4 w-4" />
+                  Font
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {fontOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setFont(option.id)}
+                      className={`flex flex-col items-center gap-2 rounded-lg border p-4 transition-all ${
+                        font === option.id
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                          : 'border-[var(--color-border)] hover:border-[var(--color-accent)]/50'
+                      }`}
+                    >
+                      <span
+                        className="text-2xl font-semibold text-[var(--color-text-primary)]"
+                        style={{
+                          fontFamily: option.id === 'system'
+                            ? 'inherit'
+                            : option.id === 'inter'
+                            ? '"Inter", sans-serif'
+                            : option.id === 'roboto'
+                            ? '"Roboto", sans-serif'
+                            : option.id === 'nunito'
+                            ? '"Nunito", sans-serif'
+                            : '"Source Sans Pro", sans-serif',
+                        }}
+                      >
+                        {option.preview}
+                      </span>
+                      <span className={`text-xs ${font === option.id ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
+                        {option.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base">Accent Color</CardTitle>
               </CardHeader>
               <CardContent>
@@ -460,20 +525,23 @@ export function Settings() {
                     <button
                       key={color.id}
                       onClick={() => setAccentColor(color.id)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform ${
-                        accentColor === color.id ? 'scale-110 ring-2 ring-offset-2' : ''
+                      className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
+                        accentColor === color.id ? 'scale-110 ring-2 ring-offset-2 ring-offset-[var(--color-background)]' : 'hover:scale-105'
                       }`}
                       style={{
                         backgroundColor: color.color,
-                        // @ts-expect-error CSS custom property for ring color
-                        '--tw-ring-color': color.color,
+                        boxShadow: accentColor === color.id ? `0 0 0 2px ${color.color}40` : undefined,
                       }}
                       aria-label={color.label}
+                      title={color.label}
                     >
                       {accentColor === color.id && <Check className="h-5 w-5 text-white" />}
                     </button>
                   ))}
                 </div>
+                <p className="mt-3 text-xs text-[var(--color-text-muted)]">
+                  Changes the primary color throughout the app
+                </p>
               </CardContent>
             </Card>
 
@@ -484,19 +552,22 @@ export function Settings() {
               <CardContent>
                 <div className="flex gap-2">
                   {[
-                    { value: 'comfortable', label: 'Comfortable' },
-                    { value: 'compact', label: 'Compact' },
+                    { value: 'comfortable' as const, label: 'Comfortable', desc: 'More spacing, easier to read' },
+                    { value: 'compact' as const, label: 'Compact', desc: 'More content, less spacing' },
                   ].map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setDensity(option.value as 'comfortable' | 'compact')}
-                      className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                      onClick={() => setDensity(option.value)}
+                      className={`flex-1 rounded-lg border p-4 text-left transition-colors ${
                         density === option.value
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
-                          : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-background-secondary)]'
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                          : 'border-[var(--color-border)] hover:border-[var(--color-accent)]/50'
                       }`}
                     >
-                      {option.label}
+                      <p className={`font-medium ${density === option.value ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]'}`}>
+                        {option.label}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--color-text-muted)]">{option.desc}</p>
                     </button>
                   ))}
                 </div>
@@ -514,12 +585,21 @@ export function Settings() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[var(--color-text-primary)]">Archive Account</p>
+                  <p className="font-medium text-[var(--color-text-primary)]">Sign Out</p>
                   <p className="text-sm text-[var(--color-text-muted)]">
-                    Temporarily disable your account
+                    Sign out of your account on this device
                   </p>
                 </div>
-                <Button variant="outline">Archive</Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    await signOut()
+                    toast.success('Signed out successfully')
+                    navigate('/auth/login')
+                  }}
+                >
+                  Sign Out
+                </Button>
               </div>
 
               <div className="flex items-center justify-between">
@@ -618,7 +698,8 @@ export function Settings() {
                 variant="destructive"
                 disabled={deleteConfirmText !== 'DELETE'}
                 onClick={() => {
-                  // Handle delete
+                  clearAllData()
+                  toast.success('All data has been deleted')
                   setDeleteDialogOpen(false)
                   setDeleteConfirmText('')
                 }}

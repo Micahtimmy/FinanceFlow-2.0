@@ -3,10 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { toast } from 'sonner'
 
 export function Signup() {
   const navigate = useNavigate()
+  const { signUp, signInWithGoogle, isDemoMode } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,12 +38,26 @@ export function Signup() {
     setError('')
     setIsLoading(true)
 
-    // Simulate signup (replace with real auth)
-    setTimeout(() => {
+    const { error } = await signUp(email, password, name)
+
+    if (error) {
+      setError(error.message)
       setIsLoading(false)
-      // Redirect to onboarding for new users
-      navigate('/onboarding')
-    }, 1000)
+      return
+    }
+
+    toast.success('Account created! Please check your email to verify.')
+    navigate('/onboarding')
+  }
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true)
+    const { error } = await signInWithGoogle()
+
+    if (error) {
+      setError(error.message)
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -60,6 +77,16 @@ export function Signup() {
             <span className="text-xl font-semibold gradient-text">FinanceFlow</span>
           </Link>
         </div>
+
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-4 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 p-3">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-warning)]">
+              <AlertCircle className="h-4 w-4" />
+              <span>Demo Mode - Enter any credentials to continue</span>
+            </div>
+          </div>
+        )}
 
         <Card>
           <CardContent className="p-6">
@@ -174,7 +201,10 @@ export function Signup() {
 
               {/* Error */}
               {error && (
-                <p className="text-sm text-[var(--color-danger)]">{error}</p>
+                <div className="flex items-center gap-2 rounded-lg bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
               )}
 
               {/* Submit */}
@@ -194,8 +224,13 @@ export function Signup() {
               <div className="h-px flex-1 bg-[var(--color-border)]" />
             </div>
 
-            {/* Google OAuth (UI only) */}
-            <Button variant="outline" className="w-full gap-2">
+            {/* Google OAuth */}
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={handleGoogleSignUp}
+              disabled={isLoading}
+            >
               <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
